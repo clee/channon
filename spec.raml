@@ -1,0 +1,82 @@
+#%RAML 0.8
+---
+title: Channon continuous integration service
+version: v1
+mediaType: application/json
+baseUri: https://{serverName}
+baseUriParameters:
+  serverName:
+    description: |
+      The name of the server running the Channon service.
+protocols: [ HTTPS ]
+/plans:
+  get:
+    description: |
+      Retrieves a list of the names of plans the server knows about.
+  post:
+    description: |
+      Creates a new plan.
+  /events:
+    get:
+      description: |
+        An EventStream API endpoint for clients to stream realtime updates about new/modified/deleted plans.
+  /{planName}:
+    get:
+      description: |
+        Retrieves the full configuration for this plan.
+    put:
+      description: |
+        Updates the full configuration for this plan.
+    delete:
+      description: |
+        Deletes this plan from the server, including all run history.
+    /runs:
+      get:
+        description: |
+          Retrieves a list of the IDs of runs executed for this plan so far.
+      post:
+        description: |
+          Manually trigger a run for this plan.
+      /{runID}:
+        get:
+          description: |
+            Retrieves information about a specific run, including run status (failure, success, canceled, executing).
+        delete:
+          description: |
+            Deletes this run's information from the server.
+        /output:
+          get:
+            description: |
+              An EventStream endpoint for clients to stream the stdout and stderr from the run as it executes.
+    /tags:
+      /{tagName}:
+        get:
+          description: |
+            Retrieves a list of the names of plans the server knows about tagged with {tagName}.
+/runs:
+  get:
+    description: |
+      A list of all of the runs.
+    queryParameters:
+      limit:
+        description: |
+          The maximum number of runs to return.
+        required: true
+        type: string
+      tags:
+        description: |
+          If specified, only returns runs from plans matching specified tags.
+        required: false
+        type: string
+        example: "production,staging"
+/tags:
+  get:
+    description: |
+      Gets a list of all the tags on the server.
+  post:
+    description: |
+      Adds a new tag to the server.
+  /{tagName}:
+    delete:
+      description: |
+        Deletes this tag from the server.
