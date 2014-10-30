@@ -5,10 +5,17 @@ import (
 )
 
 func main() {
-	PlanManagerLoad()
-	goji.Get("/plans", listPlansHandler)
-	goji.Post("/plans", addPlanHandler)
-	goji.Delete("/plans/:planName", deletePlanHandler)
-	goji.Get("/plans/:planName", getPlanHandler)
+	planManager := NewPlanManager()
+	goji.Get("/plans", listPlansHandler(planManager))
+	goji.Post("/plans", addPlanHandler(planManager))
+
+	goji.Get("/plans/:planName", getPlanHandler(planManager))
+	goji.Delete("/plans/:planName", deletePlanHandler(planManager))
+
+	goji.Post("/plans/:planName/runs", addRunHandler(planManager))
+
+	goji.Get("/plans/:planName/runs/:runID", getRunHandler(planManager))
+	goji.Delete("/plans/:planName/runs/:runID", deleteRunHandler(planManager))
+
 	goji.Serve()
 }

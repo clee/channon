@@ -10,6 +10,8 @@ type Run struct {
 	Trigger string `json:"trigger"`
 	Start time.Time `json:"start"`
 	Duration time.Duration `json:"duration"`
+	plan *Plan
+	path string
 }
 
 type trigger struct {
@@ -33,4 +35,9 @@ type Plan struct {
 	Notification notify `json:"notify"`
 	Steps []step `json:"steps"`
 	Runs []Run `json:"runs"`
+	run_update chan int
+}
+
+type PlanSummaryList struct {
+	Names []string `json:"names"`
 }

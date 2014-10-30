@@ -2,51 +2,48 @@ package main
 
 import (
 	"errors"
-	"sync"
 )
 
-type planmanager struct {
-	once sync.Once
+type PlanManager struct {
 	plans map[string]*Plan
 	lock chan int
 }
 
-var PlanManager planmanager
-
-func PlanManagerLoad() {
-	PlanManager.once.Do(func() {
-		PlanManager.plans = make(map[string]*Plan, 0)
-		PlanManager.lock = make(chan int)
-	})
+func NewPlanManager() *PlanManager {
+	pm := PlanManager{}
+	pm.plans = make(map[string]*Plan, 0)
+	pm.lock = make(chan int)
+	return &pm
 }
 
-func PlanManagerAddPlan(plan *Plan) error {
-	PlanManagerLoad()
-	for i := 0; i < len(PlanManager.plans); i++ {
-		if _, ok := PlanManager.plans[plan.Name]; ok {
+func (pm *PlanManager) AddPlan(plan *Plan) error {
+	for i := 0; i < len(pm.plans); i++ {
+		if _, ok := pm.plans[plan.Name]; ok {
 			return errors.New("The plan name is already taken!")
 		}
 	}
+
 	go func() {
-		PlanManager.plans[plan.Name] = plan
-		PlanManager.lock <- 0
+		pm.plans[plan.Name] = plan
+		pm.lock <- 0
 	}()
-	<- PlanManager.lock
+	<- pm.lock
+
 	return nil
 }
 
-func PlanManagerGetPlans() []*Plan {
-	plans := make([]*Plan, len(PlanManager.plans))
-	for _, plan := range PlanManager.plans {
+func (pm *PlanManager) GetPlans() []*Plan {
+	plans := make([]*Plan, len(pm.plans))
+	for _, plan := range pm.plans {
 		plans = append(plans, plan)
 	}
 	return plans
 }
 
-func PlanManagerGetPlan(name string) *Plan {
-	return PlanManager.plans[name]
+func (pm *PlanManager) GetPlan(name string) *Plan {
+	return pm.plans[name]
 }
 
-func PlanManagerDeletePlan(name string) {
-	delete(PlanManager.plans, name)
+func (pm *PlanManager) DeletePlan(name string) {
+	delete(pm.plans, name)
 }

@@ -1,0 +1,20 @@
+{
+    "name": "sample",
+    "trigger": {
+        "schedule": "0 * * * * *",
+        "type": "scheduled"
+    },
+    "notify": {
+        "payload": "#!/usr/bin/env python\nprint 'oh crap'"
+    },
+    "steps": [
+        {
+            "name": "clone source",
+            "payload": "#!/bin/sh\necho 'lying to you about running git clone'"
+        },
+        {
+            "name": "build",
+            "payload": "#!/bin/sh\nsleep 30 && echo 'the build is totally finished now'"
+        }
+    ]
+}
