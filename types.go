@@ -19,7 +19,7 @@ type trigger struct {
 	Type string `json:"type"`
 }
 
-type notify struct {
+type Notification struct {
 	Target string `json:"target"`
 	Payload string `json:"payload"`
 }
@@ -31,8 +31,8 @@ type step struct {
 
 type Plan struct {
 	Name string `json:"name"`
-	Trigger trigger `json:"trigger"`
-	Notification notify `json:"notify"`
+	Triggers []trigger `json:"triggers"`
+	Notifications []Notification `json:"notifications"`
 	Steps []step `json:"steps"`
 	Runs []*Run `json:"runs"`
 	run_update chan int

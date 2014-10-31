@@ -1,12 +1,25 @@
 {
     "name": "sample",
-    "trigger": {
-        "schedule": "0 * * * * *",
-        "type": "scheduled"
-    },
-    "notify": {
-        "payload": "#!/usr/bin/env python\nprint 'oh crap'"
-    },
+    "triggers": [
+        {
+            "type": "scheduled",
+            "schedule": "0 * * * * *"
+        }
+    ],
+    "notifications": [
+        {
+            "target": "every-failure",
+            "payload": "#!/usr/bin/env python\n\nprint 'oh crap'"
+        },
+        {
+            "target": "every-run",
+            "payload": "#!/usr/bin/env python\n\nprint 'the build is done!'"
+        },
+        {
+            "target": "result-changed",
+            "payload": "#!/usr/bin/env python\n\nprint 'check the latest run!'"
+        }
+    ],
     "steps": [
         {
             "name": "clone source",
@@ -14,7 +27,7 @@
         },
         {
             "name": "build",
-            "payload": "#!/bin/sh\nsleep 10 && echo 'the build is totally finished now'"
+            "payload": "#!/bin/sh\nsleep $(( $RANDOM % 20 )) && echo 'the build is totally finished now'\nexit 2"
         }
     ]
 }

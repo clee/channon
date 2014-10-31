@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"github.com/unrolled/render"
 	"github.com/mholt/binding"
@@ -12,8 +11,8 @@ func (plan *Plan) FieldMap() binding.FieldMap {
 	return binding.FieldMap{
 		&plan.Name: "name",
 		&plan.Steps: "steps",
-		&plan.Notification: "notify",
-		&plan.Trigger: "trigger",
+		&plan.Notifications: "notifications",
+		&plan.Triggers: "triggers",
 	}
 }
 
@@ -39,8 +38,6 @@ func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Req
 			http.Error(w, err.Error(), 500)
 			return
 		}
-
-		fmt.Printf("trigger type is %s\n", plan.Trigger.Type)
 	}
 }
 

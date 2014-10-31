@@ -11,15 +11,22 @@ that whatever kind of script you want to write, you just make sure to put
 the correct hashbang in the first line and as long as your system has
 the binary you need, it'll run your script with that binary.
 
-Channon is completely agnostic about the kinds of scripts you write
-the steps for your plan in. Want to use Python? Ruby? Bash? Scala? Go
-right ahead. The environment variables set in each step persist into
-the following steps, so you can set env vars to communicate status,
-file locations, set up rbenv or virtualenv/pip, or whatever else you
-need. If any step returns a non-zero value, Channon marks the run as
-a failure, and optionally will run a “notify” step with all the
-environment vars from the previous steps so you can email, jabber,
-IRC, whatever, to tell people that things aren't working.
+Channon is completely agnostic about the kinds of scripts you write the
+steps for your plan in. Want to use Python? Ruby? Bash? Scala? Go right
+ahead. If any step returns a non-zero value, Channon marks the run as a
+failure.
+
+You can configure notifications to fire on the following conditions:
+
+ * Every run
+ * Every failure
+ * Only when the run's status is different from the previous run
+
+Notification scripts are just as flexible as the step scripts, but 
+they also have access to the stdout and stderr from the previous steps
+available in files so you can email, jabber, IRC, whatever, to tell
+people that a new run just finished, or that runs just started failing
+(or passing!), etc.
 
 The same “shoot yourself with a bowel disruptor” attitude is applied to
 version control. Make the first step in a plan a script to check the code

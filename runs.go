@@ -61,19 +61,16 @@ func (run *Run) Execute() {
 		exe, err := os.Create(stepPath)
 		if err != nil {
 			run.updateStatus("failure")
-			log.Printf("could create file for payload! out of disk space or inodes?\n")
+			log.Printf("cannot create file for payload! out of disk space or inodes?\n")
 			break
 		}
 		exe.WriteString(step.Payload)
-		log.Printf("wrote payload to disk!\n")
 		exe.Chmod(0755)
 		exe.Close()
-		log.Printf("changed payload permissions!\n")
 
 		cmd := exec.Command(stepPath)
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
-		log.Printf("set stdout/stderr for process!\n")
 
 		/*
 		 * Grab the current environment, and add an env var pointing at the trigger that
@@ -82,14 +79,10 @@ func (run *Run) Execute() {
 		 * contain the bare string "scheduled" (without quotes).
 		 */
 		env := os.Environ()
-		log.Printf("grabbed os.Environ for process!\n")
 		env = append(env, fmt.Sprintf("CHANNON_TRIGGER=%s/trigger", run.path))
-		log.Printf("appended CHANNON_TRIGGER to os.Environ for process!\n")
 		cmd.Env = env
-		log.Printf("set Env for process!\n")
 
 		err = cmd.Run()
-		log.Printf("ran process!\n")
 		stdout.Close()
 		stderr.Close()
 		if err != nil {
