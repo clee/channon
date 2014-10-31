@@ -17,18 +17,9 @@ func (plan *Plan) FieldMap() binding.FieldMap {
 	}
 }
 
-func (plan *Plan) addRun(run Run) {
-	go func() {
-		plan.Runs = append(plan.Runs, run)
-		run.Execute(plan.Steps)
-		plan.run_update <- 0
-	}()
-	<- plan.run_update
-}
-
 func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
-		psl := PlansSummarized(pm.GetPlans())
+		psl := pm.PlansSummarized()
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, psl)
 	}
@@ -36,13 +27,14 @@ func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.R
 
 func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
-		plan := Plan{}
-		errs := binding.Bind(r, &plan)
+		plan := new(Plan)
+		errs := binding.Bind(r, plan)
+		plan.run_update = make(chan int)
 		if errs.Handle(w) {
 			return
 		}
 
-		err := pm.AddPlan(&plan)
+		err := pm.AddPlan(plan)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -64,7 +56,7 @@ func deletePlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http
 func getPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Request)) {
 	return func (c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
-		plan := pm.GetPlan(planName)
+		plan := pm.plans[planName]
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, plan)
 	}

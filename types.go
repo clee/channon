@@ -34,7 +34,7 @@ type Plan struct {
 	Trigger trigger `json:"trigger"`
 	Notification notify `json:"notify"`
 	Steps []step `json:"steps"`
-	Runs []Run `json:"runs"`
+	Runs []*Run `json:"runs"`
 	run_update chan int
 }
 

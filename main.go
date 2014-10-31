@@ -13,6 +13,7 @@ func main() {
 	goji.Delete("/plans/:planName", deletePlanHandler(planManager))
 
 	goji.Post("/plans/:planName/runs", addRunHandler(planManager))
+	goji.Get("/plans/:planName/runs", listRunsHandler(planManager))
 
 	goji.Get("/plans/:planName/runs/:runID", getRunHandler(planManager))
 	goji.Delete("/plans/:planName/runs/:runID", deleteRunHandler(planManager))

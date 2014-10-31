@@ -14,7 +14,7 @@
         },
         {
             "name": "build",
-            "payload": "#!/bin/sh\nsleep 30 && echo 'the build is totally finished now'"
+            "payload": "#!/bin/sh\nsleep 10 && echo 'the build is totally finished now'"
         }
     ]
 }

@@ -17,12 +17,20 @@ func NewPlanManager() *PlanManager {
 }
 
 func (pm *PlanManager) AddPlan(plan *Plan) error {
-	for i := 0; i < len(pm.plans); i++ {
-		if _, ok := pm.plans[plan.Name]; ok {
-			return errors.New("The plan name is already taken!")
-		}
+	if _, ok := pm.plans[plan.Name]; ok {
+		return errors.New("The plan name is already taken!")
 	}
 
+	go func() {
+		pm.plans[plan.Name] = plan
+		pm.lock <- 0
+	}()
+	<- pm.lock
+
+	return nil
+}
+
+func (pm *PlanManager) UpdatePlan(plan *Plan) error {
 	go func() {
 		pm.plans[plan.Name] = plan
 		pm.lock <- 0
@@ -40,8 +48,13 @@ func (pm *PlanManager) GetPlans() []*Plan {
 	return plans
 }
 
-func (pm *PlanManager) GetPlan(name string) *Plan {
-	return pm.plans[name]
+func (pm *PlanManager) PlansSummarized() (psl PlanSummaryList) {
+	for _, plan := range pm.plans {
+		if plan.Name != "" {
+			psl.Names = append(psl.Names, plan.Name)
+		}
+	}
+	return psl
 }
 
 func (pm *PlanManager) DeletePlan(name string) {
