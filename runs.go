@@ -48,6 +48,7 @@ func (run *Run) Execute() {
 			log.Printf("cannot create stdout log for run! out of disk space or inodes?\n")
 			break
 		}
+
 		stderr, err := os.Create(stepPath + ".err")
 		if err != nil {
 			run.updateStatus("failure")
@@ -64,6 +65,7 @@ func (run *Run) Execute() {
 			log.Printf("cannot create file for payload! out of disk space or inodes?\n")
 			break
 		}
+
 		exe.WriteString(step.Payload)
 		exe.Chmod(0755)
 		exe.Close()
@@ -98,6 +100,12 @@ func (run *Run) Execute() {
 	if run.Status != "failure" {
 		run.updateStatus("success")
 	}
+
+	go func() {
+		for _, notification := range run.plan.Notifications {
+			notification.Execute(run)
+		}
+	}()
 }
 
 /*
