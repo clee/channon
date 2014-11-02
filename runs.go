@@ -101,11 +101,10 @@ func (run *Run) Execute() {
 		run.updateStatus("success")
 	}
 
-	go func() {
-		for _, notification := range run.plan.Notifications {
-			notification.Execute(run)
-		}
-	}()
+	for _, n := range run.plan.Notifications {
+		n := n // the shadow knows. http://golang.org/doc/faq#closures_and_goroutines
+		go n.Execute(run)
+	}
 }
 
 /*
