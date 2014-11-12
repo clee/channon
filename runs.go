@@ -37,38 +37,26 @@ func (run *Run) Execute() {
 
 	for index, step := range run.plan.Steps {
 		log.Printf("running step %s\n", step.Name)
-		stepPath := fmt.Sprintf("%s/step%d", run.path, index)
+		path, _ := os.Getwd()
+		stepPath := fmt.Sprintf("%s/plans/%s/step%d", path, run.plan.Name, index)
+		logPrefix := fmt.Sprintf("%s/step%d", run.path, index)
 
 		/*
 		 * We want to capture the stdout and stderr from each step, so set that up here.
 		 */
-		stdout, err := os.Create(stepPath + ".out")
+		stdout, err := os.Create(logPrefix + ".out")
 		if err != nil {
 			run.updateStatus("failure")
 			log.Printf("cannot create stdout log for run! out of disk space or inodes?\n")
 			break
 		}
 
-		stderr, err := os.Create(stepPath + ".err")
+		stderr, err := os.Create(logPrefix + ".err")
 		if err != nil {
 			run.updateStatus("failure")
 			log.Printf("cannot create stderr log for run! out of disk space or inodes?\n")
 			break
 		}
-
-		/*
-		 * Take the payload from this step, turn it into an executable script, and run it.
-		 */
-		exe, err := os.Create(stepPath)
-		if err != nil {
-			run.updateStatus("failure")
-			log.Printf("cannot create file for payload! out of disk space or inodes?\n")
-			break
-		}
-
-		exe.WriteString(step.Payload)
-		exe.Chmod(0755)
-		exe.Close()
 
 		cmd := exec.Command(stepPath)
 		cmd.Stdout = stdout

@@ -1,7 +1,11 @@
 package main
 
 import (
+	"os"
+	"fmt"
+	"log"
 	"errors"
+	"strings"
 )
 
 type PlanManager struct {
@@ -16,13 +20,76 @@ func NewPlanManager() *PlanManager {
 	return &pm
 }
 
+/*
+ * Create the directory and executable files for a plan's steps.
+ */
+func createStepPayloads(plan *Plan) {
+		// Create the path for this plan so we can create the step scripts.
+		path, _ := os.Getwd()
+		planPath := fmt.Sprintf("%s/plans/%s", path, plan.Name)
+		if err := os.MkdirAll(planPath, 0755); err != nil {
+			log.Printf("cannot make directory for plan %s!\n", plan.Name)
+			return
+		}
+
+		// Write each step's payload to an executable file.
+		for index, step := range plan.Steps {
+			stepPath := fmt.Sprintf("%s/step%d", planPath, index)
+			if err := os.Remove(stepPath); err != nil {
+				if !strings.Contains(err.Error(), "no such file or directory") {
+					// That's bad
+					log.Printf("Problem removing step %d: %s", index, err.Error())
+				}
+			}
+
+			exe, err := os.Create(stepPath)
+			if err != nil {
+				log.Printf("cannot create file for payload! out of disk space or inodes?\n")
+				break
+			}
+
+			exe.WriteString(step.Payload)
+			exe.Chmod(0755)
+			exe.Close()
+		}
+}
+
+func createNotificationPayloads(plan *Plan) {
+	for index, n := range plan.Notifications {
+		path, _ := os.Getwd()
+		notificationPath := fmt.Sprintf("%s/plans/%s/notify-%s", path, plan.Name, n.Target)
+		if err := os.Remove(notificationPath); err != nil {
+			if !strings.Contains(err.Error(), "no such file or directory") {
+				// That's bad
+				log.Printf("Problem removing notification %d: %s", index, err.Error())
+			}
+		}
+		exe, err := os.Create(notificationPath)
+		if err != nil {
+			log.Printf("cannot create notification script! out of disk space or inodes?\n")
+			log.Printf(err.Error())
+			return
+		}
+
+		exe.WriteString(n.Payload)
+		exe.Chmod(0755)
+		exe.Close()
+	}
+}
+
+/*
+ * Add the plan to the PlanManager, and create
+ * all steps from their payloads.
+ */
 func (pm *PlanManager) AddPlan(plan *Plan) error {
-	if _, ok := pm.plans[plan.Name]; ok {
+	if _, exists := pm.plans[plan.Name]; exists {
 		return errors.New("The plan name is already taken!")
 	}
 
 	go func() {
 		pm.plans[plan.Name] = plan
+		createStepPayloads(plan)
+		createNotificationPayloads(plan)
 		pm.lock <- 0
 	}()
 	<- pm.lock
@@ -31,8 +98,14 @@ func (pm *PlanManager) AddPlan(plan *Plan) error {
 }
 
 func (pm *PlanManager) UpdatePlan(plan *Plan) error {
+	if _, exists := pm.plans[plan.Name]; exists != true {
+		return errors.New(fmt.Sprintf("This plan (%s) does not exist!", plan.Name))
+	}
+
 	go func() {
 		pm.plans[plan.Name] = plan
+		createStepPayloads(plan)
+		createNotificationPayloads(plan)
 		pm.lock <- 0
 	}()
 	<- pm.lock

@@ -28,17 +28,8 @@ func (n *Notification) Execute(run *Run) {
 		}
 	}
 
-	notificationPath := fmt.Sprintf("%s/notification-%s", run.path, n.Target)
-	exe, err := os.Create(notificationPath)
-	if err != nil {
-		log.Printf("cannot create notification script! out of disk space or inodes?\n")
-		log.Printf(err.Error())
-		return
-	}
-
-	exe.WriteString(n.Payload)
-	exe.Chmod(0755)
-	exe.Close()
+	path, err := os.Getwd()
+	notificationPath := fmt.Sprintf("%s/plans/%s/notify-%s", path, run.plan.Name, n.Target)
 
 	cmd := exec.Command(notificationPath)
 	cmd.Stdout = nil

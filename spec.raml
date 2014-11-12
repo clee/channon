@@ -13,6 +13,13 @@ protocols: [ HTTPS ]
   get:
     description: |
       Retrieves a list of the names of plans the server knows about.
+    queryParameters:
+      tags:
+        description: |
+          If specified, only returns plans matching specified tags.
+        required: false
+        type: string
+        example: "production,staging"
   post:
     description: |
       Creates a new plan.
@@ -48,11 +55,6 @@ protocols: [ HTTPS ]
           get:
             description: |
               An EventStream endpoint for clients to stream the stdout and stderr from the run as it executes.
-    /tags:
-      /{tagName}:
-        get:
-          description: |
-            Retrieves a list of the names of plans the server knows about tagged with {tagName}.
 /runs:
   get:
     description: |

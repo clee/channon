@@ -1,7 +1,8 @@
  * cron-style scheduled execution support
  * eventsource endpoints
  * PUT support for /plans/:planName
- * move step/notification file generation and chmod to
-   addPlan handler
  * tag support
  * inotify trigger?
+
+DONE:
+ * move step/notification file generation and chmod to addPlan handler
