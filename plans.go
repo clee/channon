@@ -17,6 +17,7 @@ func (plan *Plan) FieldMap() binding.FieldMap {
 			Form: "steps",
 			Required: true,
 		},
+		&plan.Description: "description",
 		&plan.Notifications: "notifications",
 		&plan.Triggers: "triggers",
 	}

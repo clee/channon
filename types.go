@@ -31,6 +31,7 @@ type step struct {
 
 type Plan struct {
 	Name string `json:"name"`
+	Description string `json:"description"`
 	Triggers []trigger `json:"triggers"`
 	Notifications []Notification `json:"notifications"`
 	Steps []step `json:"steps"`
