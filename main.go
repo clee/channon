@@ -11,6 +11,7 @@ func main() {
 
 	goji.Get("/plans/:planName", getPlanHandler(planManager))
 	goji.Delete("/plans/:planName", deletePlanHandler(planManager))
+	goji.Put("/plans/:planName", putPlanHandler(planManager))
 
 	goji.Post("/plans/:planName/runs", addRunHandler(planManager))
 	goji.Get("/plans/:planName/runs", listRunsHandler(planManager))

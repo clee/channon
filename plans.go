@@ -9,11 +9,23 @@ import (
 
 func (plan *Plan) FieldMap() binding.FieldMap {
 	return binding.FieldMap{
-		&plan.Name: "name",
-		&plan.Steps: "steps",
+		&plan.Name: binding.Field{
+			Form: "name",
+			Required: true,
+		},
+		&plan.Steps: binding.Field{
+			Form: "steps",
+			Required: true,
+		},
 		&plan.Notifications: "notifications",
 		&plan.Triggers: "triggers",
 	}
+}
+
+func NewPlan() *Plan {
+	plan := new(Plan)
+	plan.run_update = make(chan int)
+	return plan
 }
 
 func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
@@ -26,9 +38,8 @@ func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.R
 
 func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
-		plan := new(Plan)
+		plan := NewPlan()
 		errs := binding.Bind(r, plan)
-		plan.run_update = make(chan int)
 		if errs.Handle(w) {
 			return
 		}
@@ -38,6 +49,36 @@ func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Req
 			http.Error(w, err.Error(), 500)
 			return
 		}
+	}
+}
+
+func putPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Request)) {
+	return func (c web.C, w http.ResponseWriter, r *http.Request) {
+		plan := NewPlan()
+		errs := binding.Bind(r, plan)
+		if errs.Handle(w) {
+			return
+		}
+
+		oldPlanName := c.URLParams["planName"]
+		newPlanName := plan.Name
+
+		if oldPlanName != newPlanName {
+			err := pm.RenamePlan(oldPlanName, newPlanName)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+		}
+
+		err := pm.UpdatePlan(plan)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		ren := render.New(render.Options{})
+		ren.JSON(w, http.StatusOK, map[string]string{"updated": newPlanName})
 	}
 }
 

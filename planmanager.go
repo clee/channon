@@ -97,6 +97,23 @@ func (pm *PlanManager) AddPlan(plan *Plan) error {
 	return nil
 }
 
+func (pm *PlanManager) RenamePlan(oldName, newName string) error {
+	if _, exists := pm.plans[oldName]; exists != true {
+		return errors.New(fmt.Sprintf("This plan (%s) does not exist!", oldName))
+	}
+
+	go func() {
+		pm.plans[newName] = pm.plans[oldName]
+		delete(pm.plans, oldName)
+		path, _ := os.Getwd()
+		os.Rename(path + "/plans/" + oldName, path + "/plans/" + newName)
+		pm.lock <- 0
+	}()
+	<- pm.lock
+
+	return nil
+}
+
 func (pm *PlanManager) UpdatePlan(plan *Plan) error {
 	if _, exists := pm.plans[plan.Name]; exists != true {
 		return errors.New(fmt.Sprintf("This plan (%s) does not exist!", plan.Name))
@@ -131,5 +148,9 @@ func (pm *PlanManager) PlansSummarized() (psl PlanSummaryList) {
 }
 
 func (pm *PlanManager) DeletePlan(name string) {
-	delete(pm.plans, name)
+	go func() {
+		delete(pm.plans, name)
+		pm.lock <- 0
+	}()
+	<- pm.lock
 }
