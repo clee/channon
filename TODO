@@ -1,8 +1,10 @@
  * cron-style scheduled execution support
  * eventsource endpoints
- * tag support
  * inotify trigger?
+ * save plan/run/tag info on shutdown
+ * load plan/run/tag info on startup
 
 DONE:
  * move step/notification file generation and chmod to addPlan handler
  * PUT support for /plans/:planName
+ * tag support

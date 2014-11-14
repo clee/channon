@@ -10,12 +10,14 @@ import (
 
 type PlanManager struct {
 	plans map[string]*Plan
+	tags []*Tag
 	lock chan int
 }
 
 func NewPlanManager() *PlanManager {
 	pm := PlanManager{}
 	pm.plans = make(map[string]*Plan, 0)
+	pm.tags = make([]*Tag, 0)
 	pm.lock = make(chan int)
 	return &pm
 }
@@ -75,6 +77,29 @@ func createNotificationPayloads(plan *Plan) {
 		exe.Chmod(0755)
 		exe.Close()
 	}
+}
+
+func (pm *PlanManager) AddTag(tag *Tag) {
+	go func() {
+		pm.tags = append(pm.tags, tag)
+		pm.lock <- 0
+	}()
+	<- pm.lock
+}
+
+func (pm *PlanManager) DeleteTag(tag *Tag) {
+	ti := tagIndex(pm.tags, tag)
+	go func() {
+		for _, p := range pm.plans {
+			ti := tagIndex(p.Tags, tag)
+			if ti > -1 {
+				p.Tags[ti], p.Tags[len(p.Tags)-1], p.Tags = p.Tags[len(p.Tags)-1], nil, p.Tags[:len(p.Tags)-1]
+			}
+		}
+		pm.tags[ti], pm.tags[len(pm.tags)-1], pm.tags = pm.tags[len(pm.tags)-1], nil, pm.tags[:len(pm.tags)-1]
+		pm.lock <- 0
+	}()
+	<- pm.lock
 }
 
 /*
@@ -138,9 +163,26 @@ func (pm *PlanManager) GetPlans() []*Plan {
 	return plans
 }
 
-func (pm *PlanManager) PlansSummarized() (psl PlanSummaryList) {
+func (pm *PlanManager) PlansSummarized(tags []string) (psl PlanSummaryList) {
 	for _, plan := range pm.plans {
-		if plan.Name != "" {
+		if plan.Name == "" {
+			continue
+		}
+		if len(tags) == 0 {
+			psl.Names = append(psl.Names, plan.Name)
+			continue
+		}
+
+		includePlan := false
+		for _, tag := range tags {
+			for _, ptag := range plan.Tags {
+				if tag == string(*ptag) {
+					includePlan = true
+				}
+			}
+		}
+
+		if includePlan {
 			psl.Names = append(psl.Names, plan.Name)
 		}
 	}

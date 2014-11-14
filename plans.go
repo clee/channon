@@ -31,7 +31,8 @@ func NewPlan() *Plan {
 
 func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
-		psl := pm.PlansSummarized()
+		tags := r.URL.Query()["tags"]
+		psl := pm.PlansSummarized(tags)
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, psl)
 	}
@@ -43,6 +44,15 @@ func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Req
 		errs := binding.Bind(r, plan)
 		if errs.Handle(w) {
 			return
+		}
+
+		for index, tag := range plan.Tags {
+			ti := tagIndex(pm.tags, tag)
+			if ti > -1 {
+				plan.Tags[index] = pm.tags[ti]
+			} else {
+				pm.AddTag(tag)
+			}
 		}
 
 		err := pm.AddPlan(plan)
@@ -69,6 +79,15 @@ func putPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Re
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
+			}
+		}
+
+		for index, tag := range plan.Tags {
+			ti := tagIndex(pm.tags, tag)
+			if ti > -1 {
+				plan.Tags[index] = pm.tags[ti]
+			} else {
+				pm.AddTag(tag)
 			}
 		}
 

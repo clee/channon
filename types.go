@@ -36,9 +36,16 @@ type Plan struct {
 	Notifications []Notification `json:"notifications"`
 	Steps []step `json:"steps"`
 	Runs []*Run `json:"runs"`
+	Tags []*Tag `json:"tags"`
 	run_update chan int
 }
 
 type PlanSummaryList struct {
 	Names []string `json:"names"`
+}
+
+type Tag string
+
+type TagCrumb struct {
+	TagName string `json:"tagName"`
 }

@@ -19,5 +19,9 @@ func main() {
 	goji.Get("/plans/:planName/runs/:runID", getRunHandler(planManager))
 	goji.Delete("/plans/:planName/runs/:runID", deleteRunHandler(planManager))
 
+	goji.Get("/tags", listTagsHandler(planManager))
+	goji.Post("/tags", addTagHandler(planManager))
+	goji.Delete("/tags/:tagName", deleteTagHandler(planManager))
+
 	goji.Serve()
 }

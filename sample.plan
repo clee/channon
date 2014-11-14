@@ -1,5 +1,10 @@
 {
     "name": "sample",
+    "description": "a fully-featured plan to test supported functionality",
+    "tags": [
+        "staging",
+        "production"
+    ],
     "triggers": [
         {
             "type": "scheduled",
