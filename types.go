@@ -35,8 +35,8 @@ type Plan struct {
 	Triggers []trigger `json:"triggers"`
 	Notifications []Notification `json:"notifications"`
 	Steps []step `json:"steps"`
-	Runs []*Run `json:"runs"`
 	Tags []*Tag `json:"tags"`
+	Runs []*Run 
 	run_update chan int
 }
 

@@ -9,13 +9,31 @@ import (
 	"strconv"
 	"os/exec"
 	"net/http"
+	"encoding/json"
 	"github.com/unrolled/render"
 	"github.com/zenazn/goji/web"
 )
 
+func (run *Run) save() {
+	runMetadata, _ := os.Create(run.path + "/run.json")
+	json.NewEncoder(runMetadata).Encode(run)
+	defer runMetadata.Close()
+}
+
+func max(runs []*Run) uint {
+	m := 0
+	for i := range runs {
+		if i > m {
+			m = i
+		}
+	}
+	return uint(m)
+}
+
 func (run *Run) updateStatus(status string) {
 	go func() {
 		run.Status = status
+		run.save()
 		run.plan.run_update <- 0
 	}()
 	<- run.plan.run_update
@@ -24,6 +42,7 @@ func (run *Run) updateStatus(status string) {
 func (run *Run) finished() {
 	go func() {
 		run.Duration = time.Now().Sub(run.Start)
+		run.save()
 		run.plan.run_update <- 0
 	}()
 	<- run.plan.run_update
@@ -64,7 +83,7 @@ func (run *Run) Execute() {
 
 		/*
 		 * Grab the current environment, and add an env var pointing at the trigger that
-		 * caused this run. The body from an HTTP trigger is already dumped into this file,
+		 * caused this run. The body from an HTTP trigger is already dumped into this file.
 		 * If the run was triggered by crontab-style execution, the trigger file will just
 		 * contain the bare string "scheduled" (without quotes).
 		 */
@@ -104,16 +123,17 @@ func addRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Reque
 		plan := pm.plans[planName]
 
 		path, _ := os.Getwd()
-		path = fmt.Sprintf("%s/plans/%s/runs/%d", path, planName, len(plan.Runs))
+		path = fmt.Sprintf("%s/plans/%s/runs/%d", path, planName, max(plan.Runs) + 1)
 
 		// Save the trigger's body before we do anything else
 		os.MkdirAll(path, 0755)
 		trigger, _ := os.Create(path + "/trigger")
 		io.Copy(trigger, r.Body)
-		trigger.Close()
+		defer trigger.Close()
 
-		newRunID := uint(len(plan.Runs))
+		newRunID := max(plan.Runs) + 1
 		newRun := Run{Id: newRunID, Status: "pending", Trigger: "post", Start: time.Now(), plan: plan, path: path}
+		newRun.save()
 
 		go func() {
 			plan.Runs = append(plan.Runs, &newRun)
@@ -177,8 +197,10 @@ func deleteRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Re
 		}
 
 		plan := pm.plans[planName]
+		run := plan.Runs[runID]
 
 		go func() {
+			os.RemoveAll(run.path)
 			plan.Runs[runID] = &Run{}
 			plan.run_update <- 0
 		}()

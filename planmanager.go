@@ -6,6 +6,9 @@ import (
 	"log"
 	"errors"
 	"strings"
+	"strconv"
+	"encoding/json"
+	"path/filepath"
 )
 
 type PlanManager struct {
@@ -19,41 +22,139 @@ func NewPlanManager() *PlanManager {
 	pm.plans = make(map[string]*Plan, 0)
 	pm.tags = make([]*Tag, 0)
 	pm.lock = make(chan int)
+
+	cwd, _ := os.Getwd()
+	plansPath := filepath.Join(cwd, "plans")
+
+	filepath.Walk(plansPath, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		path = strings.TrimPrefix(path, plansPath + "/")
+		dir := strings.TrimSuffix(path, "/" + f.Name())
+
+		if f.Name() == "plan.json" {
+			go func() {
+				log.Printf("loading plan from: %s", dir)
+				pm.plans[dir] = loadPlan(dir)
+				pm.lock <- 0
+			}()
+			<- pm.lock
+		}
+
+		return nil
+	})
 	return &pm
+}
+
+/*
+ * Save the plan to disk
+ */
+func savePlan(plan *Plan) {
+	path, _ := os.Getwd()
+	planPath := filepath.Join(path, "plans", plan.Name)
+
+	if err := os.MkdirAll(planPath, 0755); err != nil {
+		log.Printf("cannot make directory for plan %s!\n", plan.Name)
+		return
+	}
+
+	planFile, err := os.Create(filepath.Join(planPath, "plan.json"))
+	if err != nil {
+		log.Printf("cannot make file for plan %s!\n", plan.Name)
+		return
+	}
+
+	enc := json.NewEncoder(planFile)
+	enc.Encode(plan)
+	planFile.Close()
+
+	createStepPayloads(plan)
+	createNotificationPayloads(plan)
+}
+
+/*
+ * Loads a plan from the disk
+ */
+func loadPlan(name string) *Plan {
+	path, _ := os.Getwd()
+	planPath := filepath.Join(path, "plans", name)
+	planFile, err := os.Open(filepath.Join(planPath, "plan.json"))
+	if err != nil {
+		log.Printf("cannot open file for plan %s!\n", name)
+		return nil
+	}
+	defer planFile.Close()
+
+	plan := NewPlan()
+	err = json.NewDecoder(planFile).Decode(plan)
+	if err != nil {
+		log.Printf("error decoding plan!\n", name)
+		return nil
+	}
+
+	runsPath := filepath.Join(planPath, "runs")
+	filepath.Walk(runsPath, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if f.Name() == "run.json" {
+			go func() {
+				runStr := filepath.Base(filepath.Dir(path))
+				runID, _ := strconv.ParseInt(runStr, 10, 32)
+				log.Printf("loading run %d from: %s", runID, path)
+				plan.Runs = append(plan.Runs, loadRun(path))
+				plan.run_update <- 0
+			}()
+			<- plan.run_update
+		}
+
+		return nil
+	})
+
+	return plan
+}
+
+func loadRun(path string) *Run {
+	r := new(Run)
+	runFile, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	json.NewDecoder(runFile).Decode(r)
+	return r
 }
 
 /*
  * Create the directory and executable files for a plan's steps.
  */
 func createStepPayloads(plan *Plan) {
-		// Create the path for this plan so we can create the step scripts.
-		path, _ := os.Getwd()
-		planPath := fmt.Sprintf("%s/plans/%s", path, plan.Name)
-		if err := os.MkdirAll(planPath, 0755); err != nil {
-			log.Printf("cannot make directory for plan %s!\n", plan.Name)
-			return
+	// Create the path for this plan so we can create the step scripts.
+	path, _ := os.Getwd()
+	planPath := fmt.Sprintf("%s/plans/%s", path, plan.Name)
+
+	// Write each step's payload to an executable file.
+	for index, step := range plan.Steps {
+		stepPath := fmt.Sprintf("%s/step%d", planPath, index)
+		if err := os.Remove(stepPath); err != nil {
+			if !strings.Contains(err.Error(), "no such file or directory") {
+				// That's bad
+				log.Printf("Problem removing step %d: %s", index, err.Error())
+			}
 		}
 
-		// Write each step's payload to an executable file.
-		for index, step := range plan.Steps {
-			stepPath := fmt.Sprintf("%s/step%d", planPath, index)
-			if err := os.Remove(stepPath); err != nil {
-				if !strings.Contains(err.Error(), "no such file or directory") {
-					// That's bad
-					log.Printf("Problem removing step %d: %s", index, err.Error())
-				}
-			}
-
-			exe, err := os.Create(stepPath)
-			if err != nil {
-				log.Printf("cannot create file for payload! out of disk space or inodes?\n")
-				break
-			}
-
-			exe.WriteString(step.Payload)
-			exe.Chmod(0755)
-			exe.Close()
+		exe, err := os.Create(stepPath)
+		if err != nil {
+			log.Printf("cannot create file for payload! out of disk space or inodes?\n")
+			break
 		}
+
+		exe.WriteString(step.Payload)
+		exe.Chmod(0755)
+		exe.Close()
+	}
 }
 
 func createNotificationPayloads(plan *Plan) {
@@ -113,8 +214,7 @@ func (pm *PlanManager) AddPlan(plan *Plan) error {
 
 	go func() {
 		pm.plans[plan.Name] = plan
-		createStepPayloads(plan)
-		createNotificationPayloads(plan)
+		savePlan(plan)
 		pm.lock <- 0
 	}()
 	<- pm.lock
@@ -125,6 +225,10 @@ func (pm *PlanManager) AddPlan(plan *Plan) error {
 func (pm *PlanManager) RenamePlan(oldName, newName string) error {
 	if _, exists := pm.plans[oldName]; exists != true {
 		return errors.New(fmt.Sprintf("This plan (%s) does not exist!", oldName))
+	}
+
+	if _, exists := pm.plans[newName]; exists {
+		return errors.New(fmt.Sprintf("The plan (%s) already exists!", newName))
 	}
 
 	go func() {
@@ -146,8 +250,7 @@ func (pm *PlanManager) UpdatePlan(plan *Plan) error {
 
 	go func() {
 		pm.plans[plan.Name] = plan
-		createStepPayloads(plan)
-		createNotificationPayloads(plan)
+		savePlan(plan)
 		pm.lock <- 0
 	}()
 	<- pm.lock
