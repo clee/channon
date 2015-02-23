@@ -25,6 +25,7 @@ func (plan *Plan) FieldMap() binding.FieldMap {
 
 func NewPlan() *Plan {
 	plan := new(Plan)
+	plan.Runs = make(map[uint]*Run)
 	plan.run_update = make(chan int)
 	return plan
 }

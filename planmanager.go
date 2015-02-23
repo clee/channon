@@ -31,13 +31,11 @@ func NewPlanManager() *PlanManager {
 			return err
 		}
 
-		path = strings.TrimPrefix(path, plansPath + "/")
-		dir := strings.TrimSuffix(path, "/" + f.Name())
-
 		if f.Name() == "plan.json" {
 			go func() {
-				log.Printf("loading plan from: %s", dir)
-				pm.plans[dir] = loadPlan(dir)
+				log.Printf("loading plan from: %s", path)
+				p := loadPlan(path)
+				pm.plans[p.Name] = p
 				pm.lock <- 0
 			}()
 			<- pm.lock
@@ -68,7 +66,7 @@ func savePlan(plan *Plan) {
 
 	enc := json.NewEncoder(planFile)
 	enc.Encode(plan)
-	planFile.Close()
+	defer planFile.Close()
 
 	createStepPayloads(plan)
 	createNotificationPayloads(plan)
@@ -77,12 +75,10 @@ func savePlan(plan *Plan) {
 /*
  * Loads a plan from the disk
  */
-func loadPlan(name string) *Plan {
-	path, _ := os.Getwd()
-	planPath := filepath.Join(path, "plans", name)
-	planFile, err := os.Open(filepath.Join(planPath, "plan.json"))
+func loadPlan(planPath string) *Plan {
+	planFile, err := os.Open(planPath)
 	if err != nil {
-		log.Printf("cannot open file for plan %s!\n", name)
+		log.Printf("cannot open plan file %s!\n", planPath)
 		return nil
 	}
 	defer planFile.Close()
@@ -90,11 +86,11 @@ func loadPlan(name string) *Plan {
 	plan := NewPlan()
 	err = json.NewDecoder(planFile).Decode(plan)
 	if err != nil {
-		log.Printf("error decoding plan!\n", name)
+		log.Printf("error decoding plan!\n")
 		return nil
 	}
 
-	runsPath := filepath.Join(planPath, "runs")
+	runsPath := filepath.Join(filepath.Dir(planPath), "runs")
 	filepath.Walk(runsPath, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -103,9 +99,9 @@ func loadPlan(name string) *Plan {
 		if f.Name() == "run.json" {
 			go func() {
 				runStr := filepath.Base(filepath.Dir(path))
-				runID, _ := strconv.ParseInt(runStr, 10, 32)
+				runID, _ := strconv.ParseUint(runStr, 10, 32)
 				log.Printf("loading run %d from: %s", runID, path)
-				plan.Runs = append(plan.Runs, loadRun(path))
+				plan.Runs[uint(runID)] = loadRun(path)
 				plan.run_update <- 0
 			}()
 			<- plan.run_update
@@ -235,7 +231,7 @@ func (pm *PlanManager) RenamePlan(oldName, newName string) error {
 		pm.plans[newName] = pm.plans[oldName]
 		delete(pm.plans, oldName)
 		path, _ := os.Getwd()
-		os.Rename(path + "/plans/" + oldName, path + "/plans/" + newName)
+		os.Rename(filepath.Join(path, "plans", oldName), filepath.Join(path, "plans", newName))
 		pm.lock <- 0
 	}()
 	<- pm.lock

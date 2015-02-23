@@ -9,25 +9,28 @@ import (
 	"strconv"
 	"os/exec"
 	"net/http"
+	"path/filepath"
 	"encoding/json"
 	"github.com/unrolled/render"
 	"github.com/zenazn/goji/web"
 )
 
 func (run *Run) save() {
-	runMetadata, _ := os.Create(run.path + "/run.json")
+	runMetadata, _ := os.Create(filepath.Join(run.path, "run.json"))
 	json.NewEncoder(runMetadata).Encode(run)
 	defer runMetadata.Close()
 }
 
-func max(runs []*Run) uint {
-	m := 0
-	for i := range runs {
-		if i > m {
-			m = i
+func nextRunID(runs map[uint]*Run) uint {
+	log.Printf("calling nextRunID")
+	var m uint = 0
+	for i, _ := range runs {
+		if i >= m {
+			m = i + 1
 		}
 	}
-	return uint(m)
+	log.Printf("\treturning: %d", m)
+	return m
 }
 
 func (run *Run) updateStatus(status string) {
@@ -47,6 +50,7 @@ func (run *Run) finished() {
 	}()
 	<- run.plan.run_update
 }
+
 /*
  * Execute the steps for this plan.
  */
@@ -123,20 +127,20 @@ func addRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Reque
 		plan := pm.plans[planName]
 
 		path, _ := os.Getwd()
-		path = fmt.Sprintf("%s/plans/%s/runs/%d", path, planName, max(plan.Runs) + 1)
+		path = filepath.Join(path, "plans", planName, "runs", strconv.FormatUint(uint64(nextRunID(plan.Runs)), 10))
 
 		// Save the trigger's body before we do anything else
 		os.MkdirAll(path, 0755)
-		trigger, _ := os.Create(path + "/trigger")
+		trigger, _ := os.Create(filepath.Join(path, "trigger"))
 		io.Copy(trigger, r.Body)
 		defer trigger.Close()
 
-		newRunID := max(plan.Runs) + 1
+		newRunID := nextRunID(plan.Runs)
 		newRun := Run{Id: newRunID, Status: "pending", Trigger: "post", Start: time.Now(), plan: plan, path: path}
 		newRun.save()
 
 		go func() {
-			plan.Runs = append(plan.Runs, &newRun)
+			plan.Runs[newRunID] = &newRun
 			go newRun.Execute()
 			plan.run_update <- 0
 		}()
@@ -154,12 +158,14 @@ func listRunsHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Req
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
 		plan := pm.plans[planName]
+		runList := make([]*Run, 0)
+		for _, r := range plan.Runs {
+			runList = append(runList, r)
+		}
 
 		go func() {
-			log.Printf("length of runs list: %d", len(plan.Runs))
-			
 			ren := render.New(render.Options{})
-			ren.JSON(w, http.StatusOK, plan.Runs)
+			ren.JSON(w, http.StatusOK, runList)
 			plan.run_update <- 0
 		}()
 		<- plan.run_update
@@ -172,13 +178,13 @@ func listRunsHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Req
 func getRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
-		runID, err := strconv.ParseInt(c.URLParams["runID"], 10, 32)
+		runID, err := strconv.ParseUint(c.URLParams["runID"], 10, 32)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
 
 		plan := pm.plans[planName]
-		run := plan.Runs[runID]
+		run := plan.Runs[uint(runID)]
 
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, run)
@@ -191,17 +197,17 @@ func getRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Reque
 func deleteRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
-		runID, err := strconv.ParseInt(c.URLParams["runID"], 10, 32)
+		runID, err := strconv.ParseUint(c.URLParams["runID"], 10, 32)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
 
 		plan := pm.plans[planName]
-		run := plan.Runs[runID]
+		run := plan.Runs[uint(runID)]
 
 		go func() {
 			os.RemoveAll(run.path)
-			plan.Runs[runID] = &Run{}
+			delete(plan.Runs, uint(runID))
 			plan.run_update <- 0
 		}()
 		<- plan.run_update
