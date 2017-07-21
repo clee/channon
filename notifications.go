@@ -1,9 +1,9 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 )
 
@@ -22,7 +22,7 @@ func (n *Notification) Execute(run *Run) {
 			log.Printf("not running notification! %s trigger not met", n.Target)
 			return
 		}
-		if run.Status == run.plan.Runs[run.Id - 1].Status {
+		if run.Status == run.plan.Runs[run.Id-1].Status {
 			log.Printf("not running notification! %s trigger not met", n.Target)
 			return
 		}

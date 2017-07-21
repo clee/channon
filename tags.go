@@ -3,15 +3,16 @@ package main
 import (
 	"log"
 	"net/http"
-	"github.com/unrolled/render"
+
 	"github.com/mholt/binding"
+	"github.com/unrolled/render"
 	"github.com/zenazn/goji/web"
 )
 
-func (t *TagCrumb) FieldMap() binding.FieldMap {
+func (t *TagCrumb) FieldMap(r *http.Request) binding.FieldMap {
 	return binding.FieldMap{
 		&t.TagName: binding.Field{
-			Form: "tagName",
+			Form:     "tagName",
 			Required: true,
 		},
 	}
@@ -26,14 +27,14 @@ func tagIndex(tags []*Tag, tag *Tag) int {
 	return -1
 }
 
-func listTagsHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
+func listTagsHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, pm.tags)
 	}
 }
 
-func addTagHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
+func addTagHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		t := new(TagCrumb)
 		errs := binding.Bind(r, t)
@@ -48,14 +49,14 @@ func addTagHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Requ
 			pm.AddTag(&tag)
 			pm.lock <- 0
 		}()
-		<- pm.lock
+		<-pm.lock
 
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, map[string]string{"tagAdded": t.TagName})
 	}
 }
 
-func deleteTagHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
+func deleteTagHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		t := new(TagCrumb)
 		errs := binding.Bind(r, t)
@@ -69,7 +70,7 @@ func deleteTagHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.R
 			pm.DeleteTag(&tag)
 			pm.lock <- 0
 		}()
-		<- pm.lock
+		<-pm.lock
 
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, map[string]string{"tagDeleted": t.TagName})

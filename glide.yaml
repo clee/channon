@@ -1,0 +1,9 @@
+package: .
+import:
+- package: github.com/mholt/binding
+  version: ^0.3.0
+- package: github.com/unrolled/render
+- package: github.com/zenazn/goji
+  version: ^1.0.0
+  subpackages:
+  - web

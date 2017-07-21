@@ -2,24 +2,25 @@ package main
 
 import (
 	"net/http"
-	"github.com/unrolled/render"
+
 	"github.com/mholt/binding"
+	"github.com/unrolled/render"
 	"github.com/zenazn/goji/web"
 )
 
-func (plan *Plan) FieldMap() binding.FieldMap {
+func (plan *Plan) FieldMap(r *http.Request) binding.FieldMap {
 	return binding.FieldMap{
 		&plan.Name: binding.Field{
-			Form: "name",
+			Form:     "name",
 			Required: true,
 		},
 		&plan.Steps: binding.Field{
-			Form: "steps",
+			Form:     "steps",
 			Required: true,
 		},
-		&plan.Description: "description",
+		&plan.Description:   "description",
 		&plan.Notifications: "notifications",
-		&plan.Triggers: "triggers",
+		&plan.Triggers:      "triggers",
 	}
 }
 
@@ -30,7 +31,7 @@ func NewPlan() *Plan {
 	return plan
 }
 
-func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
+func listPlansHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		tags := r.URL.Query()["tags"]
 		psl := pm.PlansSummarized(tags)
@@ -39,7 +40,7 @@ func listPlansHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.R
 	}
 }
 
-func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Request)) {
+func addPlanHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		plan := NewPlan()
 		errs := binding.Bind(r, plan)
@@ -64,8 +65,8 @@ func addPlanHandler(pm *PlanManager) (func(web.C, http.ResponseWriter, *http.Req
 	}
 }
 
-func putPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Request)) {
-	return func (c web.C, w http.ResponseWriter, r *http.Request) {
+func putPlanHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
+	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		plan := NewPlan()
 		errs := binding.Bind(r, plan)
 		if errs.Handle(w) {
@@ -103,8 +104,8 @@ func putPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Re
 	}
 }
 
-func deletePlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Request)) {
-	return func (c web.C, w http.ResponseWriter, r *http.Request) {
+func deletePlanHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
+	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
 		pm.DeletePlan(planName)
 		ren := render.New(render.Options{})
@@ -112,8 +113,8 @@ func deletePlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http
 	}
 }
 
-func getPlanHandler(pm *PlanManager) (func (web.C, http.ResponseWriter, *http.Request)) {
-	return func (c web.C, w http.ResponseWriter, r *http.Request) {
+func getPlanHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Request) {
+	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		planName := c.URLParams["planName"]
 		plan := pm.plans[planName]
 		ren := render.New(render.Options{})

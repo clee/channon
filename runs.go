@@ -1,16 +1,17 @@
 package main
 
 import (
-	"io"
-	"os"
-	"fmt"
-	"log"
-	"time"
-	"strconv"
-	"os/exec"
-	"net/http"
-	"path/filepath"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/unrolled/render"
 	"github.com/zenazn/goji/web"
 )
@@ -39,7 +40,7 @@ func (run *Run) updateStatus(status string) {
 		run.save()
 		run.plan.run_update <- 0
 	}()
-	<- run.plan.run_update
+	<-run.plan.run_update
 }
 
 func (run *Run) finished() {
@@ -48,7 +49,7 @@ func (run *Run) finished() {
 		run.save()
 		run.plan.run_update <- 0
 	}()
-	<- run.plan.run_update
+	<-run.plan.run_update
 }
 
 /*
@@ -144,7 +145,7 @@ func addRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Reque
 			go newRun.Execute()
 			plan.run_update <- 0
 		}()
-		<- plan.run_update
+		<-plan.run_update
 
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, map[string]string{"runID": fmt.Sprintf("%d", newRunID)})
@@ -168,7 +169,7 @@ func listRunsHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Req
 			ren.JSON(w, http.StatusOK, runList)
 			plan.run_update <- 0
 		}()
-		<- plan.run_update
+		<-plan.run_update
 	}
 }
 
@@ -210,7 +211,7 @@ func deleteRunHandler(pm *PlanManager) func(web.C, http.ResponseWriter, *http.Re
 			delete(plan.Runs, uint(runID))
 			plan.run_update <- 0
 		}()
-		<- plan.run_update
+		<-plan.run_update
 		ren := render.New(render.Options{})
 		ren.JSON(w, http.StatusOK, map[string]string{"deleted": fmt.Sprintf("%d", runID)})
 	}

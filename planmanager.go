@@ -1,20 +1,20 @@
 package main
 
 import (
-	"os"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"errors"
-	"strings"
-	"strconv"
-	"encoding/json"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type PlanManager struct {
 	plans map[string]*Plan
-	tags []*Tag
-	lock chan int
+	tags  []*Tag
+	lock  chan int
 }
 
 func NewPlanManager() *PlanManager {
@@ -38,7 +38,7 @@ func NewPlanManager() *PlanManager {
 				pm.plans[p.Name] = p
 				pm.lock <- 0
 			}()
-			<- pm.lock
+			<-pm.lock
 		}
 
 		return nil
@@ -104,7 +104,7 @@ func loadPlan(planPath string) *Plan {
 				plan.Runs[uint(runID)] = loadRun(path)
 				plan.run_update <- 0
 			}()
-			<- plan.run_update
+			<-plan.run_update
 		}
 
 		return nil
@@ -181,7 +181,7 @@ func (pm *PlanManager) AddTag(tag *Tag) {
 		pm.tags = append(pm.tags, tag)
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 }
 
 func (pm *PlanManager) DeleteTag(tag *Tag) {
@@ -196,7 +196,7 @@ func (pm *PlanManager) DeleteTag(tag *Tag) {
 		pm.tags[ti], pm.tags[len(pm.tags)-1], pm.tags = pm.tags[len(pm.tags)-1], nil, pm.tags[:len(pm.tags)-1]
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 }
 
 /*
@@ -213,7 +213,7 @@ func (pm *PlanManager) AddPlan(plan *Plan) error {
 		savePlan(plan)
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 
 	return nil
 }
@@ -234,7 +234,7 @@ func (pm *PlanManager) RenamePlan(oldName, newName string) error {
 		os.Rename(filepath.Join(path, "plans", oldName), filepath.Join(path, "plans", newName))
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 
 	return nil
 }
@@ -249,7 +249,7 @@ func (pm *PlanManager) UpdatePlan(plan *Plan) error {
 		savePlan(plan)
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 
 	return nil
 }
@@ -293,5 +293,5 @@ func (pm *PlanManager) DeletePlan(name string) {
 		delete(pm.plans, name)
 		pm.lock <- 0
 	}()
-	<- pm.lock
+	<-pm.lock
 }
